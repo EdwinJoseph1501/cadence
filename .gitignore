@@ -1,0 +1,36 @@
+# Swift Package Manager
+.build/
+Packages/
+*.xcodeproj/
+*.xcworkspace/
+.swiftpm/
+xcuserdata/
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Build outputs & Release Artifacts
+build/
+dist/
+*.app/
+*.dSYM/
+*.zip
+*.dmg
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# Logs & Temporary Profiling
+*.log
+.agents/logs/
+*.trace
+*.sample.txt
+*.crash

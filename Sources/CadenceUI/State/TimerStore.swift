@@ -1,0 +1,303 @@
+import CadenceCore
+import Foundation
+import Observation
+
+/// Main-actor observable runtime state store coordinating timer lifecycle, persistence, audio alerts, and presentation models.
+@Observable
+@MainActor
+public final class TimerStore {
+    public private(set) var phase: TimerPhase = .idle
+    public private(set) var selectedPreset: TimerPreset = .focus
+    public private(set) var activeDuration: TimeInterval = TimerPreset.focus.defaultDuration
+    public private(set) var isAudioAlertEnabled: Bool = true
+    public var isCustomSheetPresented: Bool = false
+
+    private let timeSource: any TimeSourceProtocol
+    private let persistence: any TimerPersistenceProtocol
+    private let notificationScheduler: any NotificationSchedulerProtocol
+    private let activityManager: any ActivityAssertionProtocol
+    private let audioAlertPlayer: any AudioAlertProtocol
+
+    private var activityToken: (any Sendable)?
+    private var hasRequestedNotificationPermission: Bool = false
+    private var notificationTask: Task<Void, Never>?
+    private static let completionNotificationIdentifier = "com.cadence.timer.completion"
+
+    public init(
+        timeSource: any TimeSourceProtocol = SystemTimeSource(),
+        persistence: any TimerPersistenceProtocol = InMemoryTimerPersistence(),
+        notificationScheduler: any NotificationSchedulerProtocol = NoOpNotificationScheduler(),
+        activityManager: any ActivityAssertionProtocol = ProcessInfoActivityManager(),
+        audioAlertPlayer: any AudioAlertProtocol = NoOpAudioAlertPlayer(),
+        defaultPreset: TimerPreset = .focus
+    ) {
+        self.timeSource = timeSource
+        self.persistence = persistence
+        self.notificationScheduler = notificationScheduler
+        self.activityManager = activityManager
+        self.audioAlertPlayer = audioAlertPlayer
+
+        if let restored = persistence.loadSession() {
+            self.selectedPreset = restored.selectedPreset
+            self.activeDuration = min(max(restored.activeDuration, 1), 86_400)
+            self.isAudioAlertEnabled = restored.isAudioAlertEnabled
+
+            switch restored.phase {
+                case .idle:
+                    self.phase = .idle
+                case .running(let deadline, let total):
+                    if timeSource.now < deadline {
+                        self.phase = .running(targetDeadline: deadline, totalDuration: total)
+                        self.activityToken = activityManager.beginUserInitiatedActivity(
+                            reason: "Restored active countdown session"
+                        )
+                        let remaining = deadline.timeIntervalSince(timeSource.now)
+                        let scheduler = notificationScheduler
+                        let sound = isAudioAlertEnabled
+                        self.notificationTask = Task {
+                            await scheduler.scheduleNotification(
+                                title: "Cadence",
+                                body: "Focus session complete.",
+                                triggerIn: remaining,
+                                identifier: Self.completionNotificationIdentifier,
+                                sound: sound
+                            )
+                        }
+                    } else {
+                        self.phase = .completed(completedAt: deadline, totalDuration: total)
+                        self.activityToken = nil
+                    }
+                case .paused(let remaining, let total):
+                    self.phase = .paused(remainingDuration: max(0, remaining), totalDuration: total)
+                case .completed(let completedAt, let total):
+                    self.phase = .completed(completedAt: completedAt, totalDuration: total)
+            }
+        } else {
+            self.selectedPreset = defaultPreset
+            self.activeDuration = defaultPreset.defaultDuration
+            self.phase = .idle
+        }
+
+        saveSession()
+    }
+
+    isolated deinit {
+        activityManager.endActivity(activityToken)
+    }
+
+    /// Starts a countdown from the currently active duration.
+    public func start() {
+        phase = TimerEngineCalculations.start(duration: activeDuration, from: timeSource.now)
+        if case .running(let deadline, _) = phase {
+            if activityToken == nil {
+                activityToken = activityManager.beginUserInitiatedActivity(
+                    reason: "Active countdown session"
+                )
+            }
+            scheduleCompletionNotification(deadline: deadline)
+        }
+        saveSession()
+    }
+
+    /// Pauses an active countdown, locking in remaining duration.
+    public func pause() {
+        phase = TimerEngineCalculations.pause(currentPhase: phase, at: timeSource.now)
+        if let token = activityToken {
+            activityManager.endActivity(token)
+            activityToken = nil
+        }
+        cancelCompletionNotification()
+        saveSession()
+    }
+
+    /// Resumes a paused countdown from the current monotonic clock anchor.
+    public func resume() {
+        phase = TimerEngineCalculations.resume(currentPhase: phase, at: timeSource.now)
+        if case .running(let deadline, _) = phase {
+            if activityToken == nil {
+                activityToken = activityManager.beginUserInitiatedActivity(
+                    reason: "Active countdown session"
+                )
+            }
+            scheduleCompletionNotification(deadline: deadline)
+        }
+        saveSession()
+    }
+
+    /// Resets the timer back to idle state without modifying the active preset or duration.
+    public func reset() {
+        phase = .idle
+        if let token = activityToken {
+            activityManager.endActivity(token)
+            activityToken = nil
+        }
+        cancelCompletionNotification()
+        saveSession()
+    }
+
+    /// Toggles the timer state: starts if idle, resumes if paused, pauses if running, restarts if completed.
+    public func toggle() {
+        switch phase {
+            case .idle:
+                start()
+            case .running:
+                pause()
+            case .paused:
+                resume()
+            case .completed:
+                start()
+        }
+    }
+
+    /// Selects a duration preset and resets the timer to idle, unless a timer is actively running.
+    public func selectPreset(_ preset: TimerPreset) {
+        guard !phase.isRunning else { return }
+        selectedPreset = preset
+        if preset != .custom {
+            activeDuration = preset.defaultDuration
+        }
+        phase = .idle
+        saveSession()
+    }
+
+    /// Validates and sets a custom session duration in seconds (1s to 86400s / 24 hours).
+    ///
+    /// If valid, updates `selectedPreset` to `.custom`, stores `activeDuration`, resets `phase` to `.idle`, and returns `true`.
+    /// If invalid, returns `false` without modifying state.
+    @discardableResult
+    public func setCustomDuration(_ seconds: TimeInterval) -> Bool {
+        guard seconds > 0 && seconds <= 86_400 else {
+            return false
+        }
+        selectedPreset = .custom
+        activeDuration = seconds
+        phase = .idle
+        saveSession()
+        return true
+    }
+
+    /// Evaluates whether the current deadline has elapsed and marks the timer as completed exactly once if applicable.
+    public func evaluateDeadline(at date: Date? = nil) {
+        let now = date ?? timeSource.now
+        guard case .running(let deadline, let total) = phase else { return }
+        if now >= deadline {
+            phase = .completed(completedAt: deadline, totalDuration: total)
+            if let token = activityToken {
+                activityManager.endActivity(token)
+                activityToken = nil
+            }
+            cancelCompletionNotification()
+            if isAudioAlertEnabled {
+                audioAlertPlayer.playCompletionAlert()
+            }
+            saveSession()
+        }
+    }
+
+    /// Toggles the audio alert preference and persists the setting.
+    public func toggleAudioAlert() {
+        isAudioAlertEnabled.toggle()
+        if case .running(let deadline, _) = phase {
+            scheduleCompletionNotification(deadline: deadline)
+        }
+        saveSession()
+    }
+
+    /// Sets the audio alert preference and persists the setting.
+    public func setAudioAlertEnabled(_ enabled: Bool) {
+        guard isAudioAlertEnabled != enabled else { return }
+        isAudioAlertEnabled = enabled
+        if case .running(let deadline, _) = phase {
+            scheduleCompletionNotification(deadline: deadline)
+        }
+        saveSession()
+    }
+
+    /// Immediately handles system wake or application activation events.
+    public func handleSystemWake() {
+        evaluateDeadline()
+    }
+
+    /// The remaining countdown duration in seconds at a specified timestamp.
+    ///
+    /// When idle, returns `activeDuration` to drive static countdown previews.
+    public func remainingDuration(at date: Date? = nil) -> TimeInterval {
+        if case .idle = phase {
+            return activeDuration
+        }
+        return TimerEngineCalculations.remainingDuration(
+            in: phase,
+            at: date ?? timeSource.now
+        )
+    }
+
+    /// The fraction of elapsed progress between 0.0 and 1.0.
+    ///
+    /// When idle, returns `0.0`.
+    public func progressFraction(at date: Date? = nil) -> Double {
+        if case .idle = phase {
+            return 0.0
+        }
+        return TimerEngineCalculations.progressFraction(
+            in: phase,
+            at: date ?? timeSource.now
+        )
+    }
+
+    /// Formats the current remaining duration into a standard display string (e.g., "25:00").
+    public func formattedCountdown(at date: Date? = nil) -> String {
+        TimerEngineCalculations.formatCountdown(remainingDuration(at: date))
+    }
+
+    /// Awaits completion of in-flight notification tasks for deterministic testing and synchronization.
+    public func waitForNotificationTasks() async {
+        await notificationTask?.value
+    }
+
+    // MARK: - Private Helpers
+
+    private func saveSession() {
+        let session = PersistedTimerSession(
+            phase: phase,
+            selectedPreset: selectedPreset,
+            activeDuration: activeDuration,
+            isAudioAlertEnabled: isAudioAlertEnabled,
+            savedAt: timeSource.now
+        )
+        persistence.save(session: session)
+    }
+
+    private func scheduleCompletionNotification(deadline: Date) {
+        let remaining = max(0, deadline.timeIntervalSince(timeSource.now))
+        guard remaining > 0 else { return }
+        let scheduler = notificationScheduler
+        let requestPermission = !hasRequestedNotificationPermission
+        hasRequestedNotificationPermission = true
+        let sound = isAudioAlertEnabled
+
+        notificationTask?.cancel()
+        notificationTask = Task {
+            if requestPermission {
+                _ = await scheduler.requestAuthorization()
+            }
+            guard !Task.isCancelled else { return }
+            await scheduler.scheduleNotification(
+                title: "Cadence",
+                body: "Focus session complete.",
+                triggerIn: remaining,
+                identifier: Self.completionNotificationIdentifier,
+                sound: sound
+            )
+        }
+    }
+
+    private func cancelCompletionNotification() {
+        notificationTask?.cancel()
+        let scheduler = notificationScheduler
+        notificationTask = Task {
+            await scheduler.cancelPendingNotifications(identifiers: [
+                Self.completionNotificationIdentifier
+            ])
+        }
+    }
+}
