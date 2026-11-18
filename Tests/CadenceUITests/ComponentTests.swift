@@ -182,4 +182,53 @@ struct ComponentTests {
         #expect(!controlsMuted.isAudioEnabled)
         #expect(controlsMuted.phase.isRunning)
     }
+
+    @Test("PinButton initializes with correct pinned and unpinned states and triggers toggle")
+    func testPinButtonStates() {
+        var toggled = false
+        let unpinnedButton = PinButton(isPinned: false, onToggle: { toggled = true })
+        #expect(!unpinnedButton.isPinned)
+        unpinnedButton.onToggle()
+        #expect(toggled)
+
+        let pinnedButton = PinButton(isPinned: true, onToggle: {})
+        #expect(pinnedButton.isPinned)
+    }
+
+    @Test("CadenceMenuBarLabel initializes across idle, running, paused, and completed phases")
+    func testMenuBarLabelPhases() {
+        let store = TimerStore()
+        let idleLabel = CadenceMenuBarLabel(store: store)
+        #expect(idleLabel.store.phase == .idle)
+
+        store.start()
+        let runningLabel = CadenceMenuBarLabel(store: store)
+        #expect(runningLabel.store.phase.isRunning)
+
+        store.pause()
+        let pausedLabel = CadenceMenuBarLabel(store: store)
+        #expect(pausedLabel.store.phase.isPaused)
+
+        store.reset()
+        #expect(store.phase == .idle)
+    }
+
+    @Test("CadenceMenuBarMenu initializes with action handlers")
+    func testMenuBarMenuActions() {
+        var opened = false
+        var quit = false
+        let store = TimerStore()
+        let menu = CadenceMenuBarMenu(
+            store: store,
+            onOpenWindow: { opened = true },
+            onQuit: { quit = true }
+        )
+        #expect(menu.store.phase == .idle)
+
+        menu.onOpenWindow()
+        #expect(opened)
+
+        menu.onQuit()
+        #expect(quit)
+    }
 }

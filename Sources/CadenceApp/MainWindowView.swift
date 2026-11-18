@@ -4,16 +4,17 @@ import CadenceUI
 import SwiftUI
 
 public struct MainWindowView: View {
-    @CadenceState private var store: TimerStore
+    public let store: TimerStore
 
     public init(
         store: TimerStore = TimerStore(
             persistence: UserDefaultsTimerPersistence(),
             notificationScheduler: UNNotificationScheduler(),
-            audioAlertPlayer: AppKitAudioPlayer()
+            audioAlertPlayer: AppKitAudioPlayer(),
+            dockTileManager: AppKitDockTileManager()
         )
     ) {
-        self._store = CadenceState(initialValue: store)
+        self.store = store
     }
 
     public var body: some View {
@@ -66,6 +67,12 @@ public struct MainWindowView: View {
                     store.selectPreset(.longSession)
                 }
                 .keyboardShortcut("4", modifiers: [.command])
+
+                Button("Toggle Always-On-Top") {
+                    guard !store.isCustomSheetPresented else { return }
+                    store.toggleAlwaysOnTop()
+                }
+                .keyboardShortcut("p", modifiers: [.command])
             }
             .frame(width: 0, height: 0)
             .opacity(0)
@@ -91,6 +98,9 @@ public struct MainWindowView: View {
             NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didWakeNotification)
         ) { _ in
             store.handleSystemWake()
+        }
+        .onChange(of: store.isAlwaysOnTop, initial: true) { _, isPinned in
+            WindowLifecycleController.shared.setAlwaysOnTop(isPinned)
         }
     }
 }

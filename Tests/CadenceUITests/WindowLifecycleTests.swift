@@ -87,4 +87,39 @@ struct WindowLifecycleTests {
 
         window.orderOut(nil)
     }
+
+    @Test("WindowLifecycleController toggles always-on-top window level")
+    func testAlwaysOnTopWindowLevel() {
+        let controller = WindowLifecycleController()
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 440, height: 530),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        controller.configure(window: window)
+
+        #expect(!controller.isAlwaysOnTop)
+        #expect(window.level == .normal)
+
+        controller.setAlwaysOnTop(true)
+        #expect(controller.isAlwaysOnTop)
+        #expect(window.level == .floating)
+
+        controller.toggleAlwaysOnTop()
+        #expect(!controller.isAlwaysOnTop)
+        #expect(window.level == .normal)
+
+        // Reset and reconfigure with initial always-on-top true
+        controller.resetForTesting()
+        controller.setAlwaysOnTop(true)
+        let window2 = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 440, height: 530),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        controller.configure(window: window2)
+        #expect(window2.level == .floating)
+    }
 }

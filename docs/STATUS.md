@@ -1,7 +1,7 @@
 # Cadence Project Status & Audit Report
 
-**Current Status**: Phase 6 Complete & Verified (Accessibility, Reduced Motion, Performance Profiling & Reliability)  
-**Date**: October 26, 2026  
+**Current Status**: v0.2.0-alpha.2 Complete & Verified (Polish, Optimization & P1 Desktop Integrations)  
+**Date**: November 18, 2026  
 **Lead Engineer / Architect**: Antigravity  
 
 ---
@@ -73,7 +73,11 @@ Key accomplishments in Phase 5:
 | **Audio Completion Alerts** | **Complete & Verified** | Native `NSSound` system chime ("Glass"), single-fire execution, user toggle preference, silent on relaunch if expired. |
 | **Application Icon** | **Complete & Verified** | Custom high-resolution `.icns` asset packaged in `build/Cadence.app/Contents/Resources/AppIcon.icns`. |
 | **Native Window Lifecycle & Appearance** | **Complete & Verified** | `WindowLifecycleController`, `CadenceWindowDelegate`, and `CadenceAppDelegate`. Cmd+W hides window without interrupting countdown, Dock click restores window, min/restore, and Cmd+Q terminates cleanly. Full-bleed `#140A10` canvas with native traffic lights. |
-| **Menu Bar Companion (`MenuBarExtra`)** | **Deferred (Phase 6/7)** | Optional lightweight menu bar timer companion. |
+| **Always-On-Top Floating Mode** | **Complete & Verified** | `WindowLifecycleController.setAlwaysOnTop`, tactile `PinButton` in top-right chrome, `Cmd+P` shortcut, and `PersistedTimerSession` persistence. |
+| **Menu Bar Companion (`MenuBarExtra`)** | **Complete & Verified** | Native `MenuBarExtra` with live monospaced countdown digits (`CadenceMenuBarLabel`), quick actions dropdown (`CadenceMenuBarMenu`), and zero-idle-CPU loop. |
+| **Dock Tile Progress Badge** | **Complete & Verified** | `DockTileManagerProtocol`, `AppKitDockTileManager`, and `MockDockTileManager` updating `NSApp.dockTile.badgeLabel` in sync with countdown minutes and pause states. |
+| **System Menu Bar Commands** | **Complete & Verified** | SwiftUI `CommandMenu("Timer")` exposing Start/Pause, Reset, Presets, Custom Duration, Pin, and Audio Mute with standard keyboard shortcuts. |
+| **DMG Packaging & CI/CD** | **Complete & Verified** | `scripts/build-dmg.sh` generating verified UDZO `.dmg` installers with `/Applications` symlink, plus GitHub Actions CI and Release workflows. |
 
 ---
 
@@ -84,7 +88,7 @@ The automated verification suite (`./scripts/verify.sh`) was run directly on the
 | Step | Check | Command | Result |
 | :---: | :--- | :--- | :--- |
 | **1/5** | Code Formatting & Style | `swift-format lint --recursive Sources Tests` | **PASSED** (0 errors, 0 warnings) |
-| **2/5** | Automated Unit Tests | `swift test` (76 tests across 10 suites) | **PASSED** (< 0.015s execution time) |
+| **2/5** | Automated Unit Tests | `swift test` (84 tests across 10 suites) | **PASSED** (< 0.015s execution time) |
 | **3/5** | Debug Compilation | `swift build -c debug` | **PASSED** (Clean compile, 0 warnings) |
 | **4/5** | Release Packaging | `./scripts/build-app.sh release` | **PASSED** (`build/Cadence.app` generated) |
 | **5/5** | Bundle Code Signature | `codesign -v build/Cadence.app` | **PASSED** (Valid ad-hoc signature) |

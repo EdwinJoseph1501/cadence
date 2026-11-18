@@ -6,6 +6,7 @@ public struct PersistedTimerSession: Codable, Sendable, Equatable {
     public let selectedPreset: TimerPreset
     public let activeDuration: TimeInterval
     public let isAudioAlertEnabled: Bool
+    public let isAlwaysOnTop: Bool
     public let savedAt: Date
 
     public init(
@@ -13,12 +14,14 @@ public struct PersistedTimerSession: Codable, Sendable, Equatable {
         selectedPreset: TimerPreset,
         activeDuration: TimeInterval,
         isAudioAlertEnabled: Bool = true,
+        isAlwaysOnTop: Bool = false,
         savedAt: Date
     ) {
         self.phase = phase
         self.selectedPreset = selectedPreset
         self.activeDuration = min(max(activeDuration, 1), 86_400)
         self.isAudioAlertEnabled = isAudioAlertEnabled
+        self.isAlwaysOnTop = isAlwaysOnTop
         self.savedAt = savedAt
     }
 
@@ -27,6 +30,7 @@ public struct PersistedTimerSession: Codable, Sendable, Equatable {
         case selectedPreset
         case activeDuration
         case isAudioAlertEnabled
+        case isAlwaysOnTop
         case savedAt
     }
 
@@ -38,6 +42,8 @@ public struct PersistedTimerSession: Codable, Sendable, Equatable {
         self.activeDuration = min(max(rawDuration, 1), 86_400)
         self.isAudioAlertEnabled =
             try container.decodeIfPresent(Bool.self, forKey: .isAudioAlertEnabled) ?? true
+        self.isAlwaysOnTop =
+            try container.decodeIfPresent(Bool.self, forKey: .isAlwaysOnTop) ?? false
         self.savedAt = try container.decode(Date.self, forKey: .savedAt)
     }
 }

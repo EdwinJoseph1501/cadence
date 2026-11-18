@@ -23,12 +23,14 @@ This document defines the authoritative seven-phase engineering roadmap for Cade
 * Clean production release build and valid local packaging (`scripts/build-app.sh`).
 * Public GitHub repository preparation and professional documentation.
 
-### P1: Implement if Time Permits
-* Keyboard shortcuts (Space for toggle, Esc for reset, Cmd+1..4 for presets).
-* Completion sound alert and user toggle.
-* Always-on-top window toggle.
-* Menu bar extra live countdown.
-* Additional visual polish and subtle ambient cues.
+### P1: Desktop Integrations & Workflows (Completed in v0.2.0-alpha.2)
+* [x] Keyboard shortcuts (Space for toggle, Esc for reset, Cmd+1..4 for presets, Cmd+P for pin, Cmd+Shift+M for mute, Cmd+K for custom).
+* [x] Completion sound alert and user toggle preference.
+* [x] Always-on-top floating window toggle (`.floating` level) with tactile pin button.
+* [x] Menu bar extra companion (`MenuBarExtra`) with live countdown digits, dropdown actions, and zero-idle CPU loop.
+* [x] Live Dock tile progress badge (`NSApp.dockTile.badgeLabel`).
+* [x] Native system menu bar commands (`CommandMenu("Timer")`).
+* [x] Automated DMG installer packaging (`scripts/build-dmg.sh`) and GitHub Actions CI/CD workflows.
 
 ### P2: Explicitly Out of Scope for v1.0
 * Stopwatch mode.
@@ -157,8 +159,11 @@ flowchart TD
 - [x] Integrate notification sound toggle respecting `isAudioAlertEnabled` preference.
 - [x] Implement native window lifecycle via `WindowLifecycleController` and `CadenceAppDelegate` (Cmd+W hide, Dock reopen, minimization restore, Cmd+Q termination).
 - [x] Refine native window chrome with `.windowStyle(.hiddenTitleBar)` and full-bleed Blood Moon canvas `#140A10` while preserving native traffic lights.
-- [ ] *(Optional P1)* Evaluate and implement floating always-on-top window level (`.floating`).
-- [ ] *(Optional P1)* Evaluate and implement lightweight menu bar timer integration (`MenuBarExtra`).
+- [x] *(Optional P1)* Evaluate and implement floating always-on-top window level (`.floating`) with tactile pin toggle button and Cmd+P shortcut.
+- [x] *(Optional P1)* Evaluate and implement lightweight menu bar timer integration (`MenuBarExtra`) with live countdown digits, dropdown quick actions, and zero-idle-CPU loop.
+- [x] *(Optional P1)* Implement live Dock tile progress badge (`NSApp.dockTile.badgeLabel`) updating in sync with timer phase transitions.
+- [x] *(Optional P1)* Implement native macOS menu bar commands (`CommandMenu("Timer")`) exposing all core operations and shortcuts in the system menu bar.
+- [x] *(Optional P1)* Implement automated DMG installer packaging (`scripts/build-dmg.sh`) and GitHub Actions CI/CD workflows (`.github/workflows/ci.yml`, `release.yml`).
 
 **Exit Criteria**:
 - Application displays custom app icon and correct bundle identity.
@@ -194,8 +199,8 @@ flowchart TD
 ---
 
 ### Phase 7: GitHub Release and Distribution
-**Objective**: Package and publish Cadence v0.1.0-alpha.  
-**Status**: **COMPLETE & VERIFIED** (Release packaging pipeline verified, clean production .app bundle assembled, verified release ZIP archive generated, documentation finalized).
+**Objective**: Package and publish Cadence v0.2.0-alpha.2 (Desktop Integrations & Workflows).  
+**Status**: **COMPLETE & VERIFIED** (Release packaging pipeline verified, clean production .app bundle assembled, verified release ZIP archive and DMG installer generated, CI/CD automated).
 
 **Key Tasks**:
 - [x] Finalize professional `README.md` with product screenshots, feature highlights, and build guide.

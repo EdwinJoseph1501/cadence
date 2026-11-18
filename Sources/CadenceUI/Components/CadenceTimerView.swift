@@ -20,16 +20,28 @@ public struct CadenceTimerView: View {
 
     public var body: some View {
         VStack(spacing: SpacingScale.md) {
-            PresetSelectorView(
-                selectedPreset: store.selectedPreset,
-                isRunning: store.phase.isRunning,
-                onSelect: { preset in
-                    store.selectPreset(preset)
-                },
-                onCustomTapped: {
-                    store.isCustomSheetPresented = true
+            ZStack {
+                PresetSelectorView(
+                    selectedPreset: store.selectedPreset,
+                    isRunning: store.phase.isRunning,
+                    onSelect: { preset in
+                        store.selectPreset(preset)
+                    },
+                    onCustomTapped: {
+                        store.isCustomSheetPresented = true
+                    }
+                )
+
+                HStack {
+                    Spacer()
+                    PinButton(
+                        isPinned: store.isAlwaysOnTop,
+                        onToggle: {
+                            store.toggleAlwaysOnTop()
+                        }
+                    )
                 }
-            )
+            }
 
             if reduceMotion {
                 if store.phase.isRunning {

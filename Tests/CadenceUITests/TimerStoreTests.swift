@@ -843,4 +843,68 @@ struct TimerStoreTests {
         #expect(!store.setCustomDuration(-1.0))
         #expect(store.activeDuration == 86_400.0)
     }
+
+    @Test("Always-on-top toggle and persistence restoration")
+    func testAlwaysOnTopToggleAndPersistence() {
+        let persistence = InMemoryTimerPersistence()
+        let clock = SimulatedTimeSource(initialTime: Date(timeIntervalSince1970: 10_000))
+        let store = TimerStore(timeSource: clock, persistence: persistence)
+
+        #expect(!store.isAlwaysOnTop)
+
+        store.toggleAlwaysOnTop()
+        #expect(store.isAlwaysOnTop)
+        #expect(persistence.loadSession()?.isAlwaysOnTop == true)
+
+        store.setAlwaysOnTop(false)
+        #expect(!store.isAlwaysOnTop)
+        #expect(persistence.loadSession()?.isAlwaysOnTop == false)
+
+        store.setAlwaysOnTop(true)
+        #expect(store.isAlwaysOnTop)
+
+        // Verify restoration in new store instance
+        let restoredStore = TimerStore(timeSource: clock, persistence: persistence)
+        #expect(restoredStore.isAlwaysOnTop)
+    }
+
+    @Test("Dock tile badge updates in sync with timer phase transitions")
+    func testDockTileBadgeCoordination() {
+        let clock = SimulatedTimeSource(initialTime: Date(timeIntervalSince1970: 10_000))
+        let dockManager = MockDockTileManager()
+        let store = TimerStore(
+            timeSource: clock,
+            dockTileManager: dockManager,
+            defaultPreset: .focus
+        )
+
+        #expect(dockManager.lastBadge == nil)
+
+        // Start 25m focus
+        store.start()
+        #expect(dockManager.lastBadge == "25m")
+
+        // Advance 10 minutes and sync
+        clock.advance(by: 600)
+        store.syncDockBadge()
+        #expect(dockManager.lastBadge == "15m")
+
+        // Pause
+        store.pause()
+        #expect(dockManager.lastBadge == "⏸")
+
+        // Resume
+        store.resume()
+        #expect(dockManager.lastBadge == "15m")
+
+        // Advance to completion
+        clock.advance(by: 900)
+        store.evaluateDeadline()
+        #expect(store.phase.isCompleted)
+        #expect(dockManager.lastBadge == "✔")
+
+        // Reset
+        store.reset()
+        #expect(dockManager.lastBadge == nil)
+    }
 }

@@ -11,6 +11,12 @@ public enum TimerPhase: Sendable, Equatable, Codable {
     case paused(remainingDuration: TimeInterval, totalDuration: TimeInterval)
     case completed(completedAt: Date, totalDuration: TimeInterval)
 
+    /// Returns whether the timer is currently in idle state.
+    public var isIdle: Bool {
+        if case .idle = self { return true }
+        return false
+    }
+
     /// Returns whether the timer is currently actively running towards a deadline.
     public var isRunning: Bool {
         if case .running = self { return true }

@@ -8,6 +8,7 @@ public final class WindowLifecycleController: NSObject {
 
     public private(set) weak var mainWindow: NSWindow?
     public private(set) var isTerminating: Bool = false
+    public private(set) var isAlwaysOnTop: Bool = false
 
     public let windowDelegate: CadenceWindowDelegate
 
@@ -40,6 +41,18 @@ public final class WindowLifecycleController: NSObject {
 
         window.minSize = NSSize(width: 400, height: 490)
         window.maxSize = NSSize(width: 500, height: 590)
+        window.level = isAlwaysOnTop ? .floating : .normal
+    }
+
+    /// Sets the window level to floating or normal based on the always-on-top preference.
+    public func setAlwaysOnTop(_ enabled: Bool) {
+        self.isAlwaysOnTop = enabled
+        mainWindow?.level = enabled ? .floating : .normal
+    }
+
+    /// Toggles the always-on-top window float state.
+    public func toggleAlwaysOnTop() {
+        setAlwaysOnTop(!isAlwaysOnTop)
     }
 
     /// Restores the main window when clicking the Dock icon or notification banner.
@@ -73,5 +86,6 @@ public final class WindowLifecycleController: NSObject {
     public func resetForTesting() {
         mainWindow = nil
         isTerminating = false
+        isAlwaysOnTop = false
     }
 }

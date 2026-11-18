@@ -89,4 +89,21 @@ struct ActivityAssertionTests {
         #expect(scheduled[1].sound == false)
         #expect(scheduled[1].identifier == "id.sound.false")
     }
+
+    @Test("DockTileManager contract verifies NoOp and Mock implementations")
+    func testDockTileManagerContracts() {
+        let noop = NoOpDockTileManager()
+        noop.setBadge("25m")
+        noop.setBadge(nil)
+
+        let mock = MockDockTileManager()
+        #expect(mock.badges.isEmpty)
+        mock.setBadge("25m")
+        #expect(mock.lastBadge == "25m")
+        mock.setBadge("⏸")
+        #expect(mock.lastBadge == "⏸")
+        mock.setBadge(nil)
+        #expect(mock.lastBadge == nil)
+        #expect(mock.badges.count == 3)
+    }
 }

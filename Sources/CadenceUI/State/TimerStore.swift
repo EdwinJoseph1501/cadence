@@ -10,6 +10,7 @@ public final class TimerStore {
     public private(set) var selectedPreset: TimerPreset = .focus
     public private(set) var activeDuration: TimeInterval = TimerPreset.focus.defaultDuration
     public private(set) var isAudioAlertEnabled: Bool = true
+    public private(set) var isAlwaysOnTop: Bool = false
     public var isCustomSheetPresented: Bool = false
 
     private let timeSource: any TimeSourceProtocol
@@ -17,6 +18,7 @@ public final class TimerStore {
     private let notificationScheduler: any NotificationSchedulerProtocol
     private let activityManager: any ActivityAssertionProtocol
     private let audioAlertPlayer: any AudioAlertProtocol
+    private let dockTileManager: any DockTileManagerProtocol
 
     private var activityToken: (any Sendable)?
     private var hasRequestedNotificationPermission: Bool = false
@@ -29,6 +31,7 @@ public final class TimerStore {
         notificationScheduler: any NotificationSchedulerProtocol = NoOpNotificationScheduler(),
         activityManager: any ActivityAssertionProtocol = ProcessInfoActivityManager(),
         audioAlertPlayer: any AudioAlertProtocol = NoOpAudioAlertPlayer(),
+        dockTileManager: any DockTileManagerProtocol = NoOpDockTileManager(),
         defaultPreset: TimerPreset = .focus
     ) {
         self.timeSource = timeSource
@@ -36,11 +39,13 @@ public final class TimerStore {
         self.notificationScheduler = notificationScheduler
         self.activityManager = activityManager
         self.audioAlertPlayer = audioAlertPlayer
+        self.dockTileManager = dockTileManager
 
         if let restored = persistence.loadSession() {
             self.selectedPreset = restored.selectedPreset
             self.activeDuration = min(max(restored.activeDuration, 1), 86_400)
             self.isAudioAlertEnabled = restored.isAudioAlertEnabled
+            self.isAlwaysOnTop = restored.isAlwaysOnTop
 
             switch restored.phase {
                 case .idle:
@@ -79,6 +84,7 @@ public final class TimerStore {
         }
 
         saveSession()
+        updateDockBadge()
     }
 
     isolated deinit {
@@ -97,6 +103,7 @@ public final class TimerStore {
             scheduleCompletionNotification(deadline: deadline)
         }
         saveSession()
+        updateDockBadge()
     }
 
     /// Pauses an active countdown, locking in remaining duration.
@@ -108,6 +115,7 @@ public final class TimerStore {
         }
         cancelCompletionNotification()
         saveSession()
+        updateDockBadge()
     }
 
     /// Resumes a paused countdown from the current monotonic clock anchor.
@@ -122,6 +130,7 @@ public final class TimerStore {
             scheduleCompletionNotification(deadline: deadline)
         }
         saveSession()
+        updateDockBadge()
     }
 
     /// Resets the timer back to idle state without modifying the active preset or duration.
@@ -133,6 +142,7 @@ public final class TimerStore {
         }
         cancelCompletionNotification()
         saveSession()
+        updateDockBadge()
     }
 
     /// Toggles the timer state: starts if idle, resumes if paused, pauses if running, restarts if completed.
@@ -158,6 +168,7 @@ public final class TimerStore {
         }
         phase = .idle
         saveSession()
+        updateDockBadge()
     }
 
     /// Validates and sets a custom session duration in seconds (1s to 86400s / 24 hours).
@@ -173,6 +184,7 @@ public final class TimerStore {
         activeDuration = seconds
         phase = .idle
         saveSession()
+        updateDockBadge()
         return true
     }
 
@@ -191,6 +203,7 @@ public final class TimerStore {
                 audioAlertPlayer.playCompletionAlert()
             }
             saveSession()
+            updateDockBadge(at: now)
         }
     }
 
@@ -213,9 +226,48 @@ public final class TimerStore {
         saveSession()
     }
 
+    /// Toggles the always-on-top window pin state and persists the setting.
+    public func toggleAlwaysOnTop() {
+        isAlwaysOnTop.toggle()
+        saveSession()
+    }
+
+    /// Sets the always-on-top window pin state and persists the setting.
+    public func setAlwaysOnTop(_ enabled: Bool) {
+        guard isAlwaysOnTop != enabled else { return }
+        isAlwaysOnTop = enabled
+        saveSession()
+    }
+
     /// Immediately handles system wake or application activation events.
     public func handleSystemWake() {
         evaluateDeadline()
+        updateDockBadge()
+    }
+
+    /// Synchronizes the dock tile badge with the current countdown state.
+    public func syncDockBadge(at date: Date? = nil) {
+        updateDockBadge(at: date)
+    }
+
+    private func updateDockBadge(at date: Date? = nil) {
+        let now = date ?? timeSource.now
+        switch phase {
+            case .idle:
+                dockTileManager.setBadge(nil)
+            case .running(let deadline, _):
+                let remaining = max(0, deadline.timeIntervalSince(now))
+                let minutes = Int(ceil(remaining / 60))
+                if minutes > 0 {
+                    dockTileManager.setBadge("\(minutes)m")
+                } else {
+                    dockTileManager.setBadge("<1m")
+                }
+            case .paused:
+                dockTileManager.setBadge("⏸")
+            case .completed:
+                dockTileManager.setBadge("✔")
+        }
     }
 
     /// The remaining countdown duration in seconds at a specified timestamp.
@@ -262,6 +314,7 @@ public final class TimerStore {
             selectedPreset: selectedPreset,
             activeDuration: activeDuration,
             isAudioAlertEnabled: isAudioAlertEnabled,
+            isAlwaysOnTop: isAlwaysOnTop,
             savedAt: timeSource.now
         )
         persistence.save(session: session)

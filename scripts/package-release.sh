@@ -60,8 +60,8 @@ echo "==> [3/5] Verifying code signature..."
 codesign --verify --deep --strict "${APP_BUNDLE}"
 echo "    ✔ Code signature verified (ad-hoc development signature)."
 
-# Step 4: Construct release ZIP archive using ditto
-echo "==> [4/5] Creating distributable ZIP archive..."
+# Step 4: Construct release ZIP archive and DMG installer
+echo "==> [4/6] Creating distributable ZIP archive..."
 mkdir -p "${DIST_DIR}"
 ZIP_NAME="Cadence-v${VERSION}-macos.zip"
 ZIP_PATH="${DIST_DIR}/${ZIP_NAME}"
@@ -75,10 +75,14 @@ rm -f "${ZIP_PATH}"
 unzip -tq "${ZIP_PATH}"
 echo "    ✔ ZIP archive created and verified."
 
-# Step 5: Report artifact summary and checksum
-echo "==> [5/5] Generating release summary..."
+echo "==> [5/6] Building standalone DMG installer..."
+"${PROJECT_ROOT}/scripts/build-dmg.sh"
+
+# Step 6: Report artifact summary and checksum
+echo "==> [6/6] Generating release summary..."
 ARCHIVE_SIZE="$(du -sh "${ZIP_PATH}" | awk '{print $1}')"
 SHA256="$(shasum -a 256 "${ZIP_PATH}" | awk '{print $1}')"
+echo "${SHA256}  ${ZIP_NAME}" > "${DIST_DIR}/${ZIP_NAME}.sha256"
 
 echo "========================================================"
 echo "          CADENCE RELEASE ARTIFACT GENERATED            "

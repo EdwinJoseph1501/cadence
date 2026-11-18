@@ -113,20 +113,43 @@ struct PersistenceModelTests {
         decoder.dateDecodingStrategy = .secondsSince1970
         let decoded = try decoder.decode(PersistedTimerSession.self, from: legacyJSON)
         #expect(decoded.isAudioAlertEnabled == true)
+        #expect(decoded.isAlwaysOnTop == false)
         #expect(decoded.activeDuration == 1500)
         #expect(decoded.selectedPreset == .focus)
 
-        // Session with audio disabled
+        // Session with audio disabled and alwaysOnTop enabled
         let now = Date(timeIntervalSince1970: 1_700_000_000)
-        let mutedSession = PersistedTimerSession(
+        let customSession = PersistedTimerSession(
             phase: .idle,
             selectedPreset: .deepWork,
             activeDuration: 3000,
             isAudioAlertEnabled: false,
+            isAlwaysOnTop: true,
             savedAt: now
         )
-        let encoded = try JSONEncoder().encode(mutedSession)
+        let encoded = try JSONEncoder().encode(customSession)
         let roundTripped = try JSONDecoder().decode(PersistedTimerSession.self, from: encoded)
         #expect(roundTripped.isAudioAlertEnabled == false)
+        #expect(roundTripped.isAlwaysOnTop == true)
+    }
+
+    @Test("PersistedTimerSession backward compatibility for missing always-on-top preference")
+    func testAlwaysOnTopBackwardCompatibility() throws {
+        // v0.1.0-alpha.1 JSON with isAudioAlertEnabled but without isAlwaysOnTop
+        let alpha1JSON = """
+            {
+                "phase": { "idle": {} },
+                "selectedPreset": "focus",
+                "activeDuration": 1500,
+                "isAudioAlertEnabled": true,
+                "savedAt": 1700000000
+            }
+            """.data(using: .utf8)!
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .secondsSince1970
+        let decoded = try decoder.decode(PersistedTimerSession.self, from: alpha1JSON)
+        #expect(decoded.isAlwaysOnTop == false)
+        #expect(decoded.isAudioAlertEnabled == true)
     }
 }

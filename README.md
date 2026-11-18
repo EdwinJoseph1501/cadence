@@ -11,7 +11,7 @@
 [![macOS](https://img.shields.io/badge/macOS-14.0%2B-black?style=flat&logo=apple)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-6.0-orange?style=flat&logo=swift)](https://swift.org/)
 [![Metal](https://img.shields.io/badge/Metal-3D%20Raymarching-red?style=flat&logo=apple)](https://developer.apple.com/metal/)
-[![Tests](https://img.shields.io/badge/Tests-76%20Passed-brightgreen?style=flat)](Tests/)
+[![Tests](https://img.shields.io/badge/Tests-84%20Passed-brightgreen?style=flat)](Tests/)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat)](LICENSE)
 
 </div>
@@ -77,12 +77,17 @@ Cadence is styled in the proprietary **Blood Moon** design language—a deep, ve
 - **Custom Duration Sheet**: Precise numeric entry with `+` / `-` steppers, supporting durations from **1 second up to 24 hours (86,400s)**.
 
 ### Native Window Lifecycle & macOS Integration
+- **Always-On-Top Floating Mode**: Toggle floating window level with the tactile pin button in the top-right chrome or <kbd>Cmd+P</kbd>. Allows keeping Cadence floating above code editors or full-screen apps.
+- **Menu Bar Extra Companion (`MenuBarExtra`)**: Displays live monospaced countdown digits in the system menu bar during active sessions, with a rich dropdown menu for quick pause/resume, resets, presets, and window toggles. Suspends evaluation when idle to ensure `0.0% CPU`.
+- **Live Dock Tile Progress Badge**: Displays remaining minutes badge (`24m`, `5m`) on the Dock icon while running and pause emblem (`⏸`) when paused, clearing automatically when idle.
+- **System Menu Bar Commands**: Exposes native macOS menu items under `Timer` (`CommandMenu`), making shortcuts readily discoverable.
 - **Dock Reopen Handling**: Closing the window (`Cmd+W`) keeps the countdown running in the Dock without interruption. Clicking the Dock icon or reactivating the app instantly restores key focus without creating duplicate windows.
 - **Native Chrome**: Seamless full-bleed canvas using `.windowStyle(.hiddenTitleBar)` with native, fully functional traffic lights.
 - **System Notifications**: Configures `UNUserNotificationCenter` completion alerts with sound synchronization and banner click-to-focus window restoration.
 - **Tactile Audio Alerts**: Plays the native macOS system chime ("Glass") upon countdown completion, with a persistent mute toggle (`Cmd+Shift+M`).
 - **App Nap Assertion**: Holds a user-initiated power activity assertion during running countdowns to prevent background throttling.
 - **Session Persistence**: Saves active timer state and preferences to `UserDefaults`, recovering interrupted countdowns gracefully upon relaunch.
+- **Packaging & CI/CD**: Native scripts produce `.app`, `.zip`, and `.dmg` installers (`scripts/build-dmg.sh`, `scripts/package-release.sh`) backed by automated GitHub Actions CI and Release pipelines.
 
 ### Accessibility & Reduced Motion
 - **VoiceOver Integration**: Countdown updates are announced using natural human phrases (e.g. *"24 minutes, 59 seconds"*) with `.updatesFrequently` throttling to avoid speech buffer congestion.
@@ -103,6 +108,8 @@ Cadence provides full keyboard accessibility. Window shortcuts are automatically
 | <kbd>⌘</kbd> + <kbd>2</kbd> | Select **Focus** preset (25m) | Idle / Paused states |
 | <kbd>⌘</kbd> + <kbd>3</kbd> | Select **Deep Work** preset (50m) | Idle / Paused states |
 | <kbd>⌘</kbd> + <kbd>4</kbd> | Select **Long Session** preset (90m) | Idle / Paused states |
+| <kbd>⌘</kbd> + <kbd>K</kbd> | Open **Custom Duration** sheet | Idle / Paused states |
+| <kbd>⌘</kbd> + <kbd>P</kbd> | Toggle **Always-On-Top** floating mode | Global window scope |
 | <kbd>⌘</kbd> + <kbd>⇧</kbd> + <kbd>M</kbd> | Toggle **Audio Alert** (Mute / Unmute) | Global window scope |
 | <kbd>⌘</kbd> + <kbd>W</kbd> | **Hide window to Dock** | Preserves running countdown |
 | <kbd>⌘</kbd> + <kbd>Q</kbd> | **Quit application** | Terminates cleanly |
@@ -186,7 +193,7 @@ make package
 ./scripts/package-release.sh
 ```
 
-This generates `build/dist/Cadence-v0.1.0-macos.zip` (~1.8 MB), validating all bundle resources and Mach-O permissions using `ditto`.
+This generates `build/dist/Cadence-v0.2.0-macos.zip` (~1.8 MB) and a standalone drag-and-drop installer `build/dist/Cadence-0.2.0.dmg` (~1.9 MB), validating all bundle resources and Mach-O permissions using `ditto` and `hdiutil`.
 
 ### Code Signing & Gatekeeper Note
 Local builds are signed with an **ad-hoc code signature** (`codesign -s -`). If distributing binaries outside Apple Developer ID notarization, macOS Gatekeeper may quarantine downloaded archives. To open:

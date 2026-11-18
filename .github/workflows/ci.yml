@@ -1,0 +1,40 @@
+name: Cadence CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Build & Verify
+    runs-on: macos-14
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify Swift Toolchain
+        run: swift --version
+
+      - name: Verify Code Formatting
+        run: |
+          if command -v swift-format &> /dev/null; then
+            swift-format lint --recursive Sources Tests
+          else
+            echo "swift-format not available on runner image; skipping format lint."
+          fi
+
+      - name: Execute Automated Unit Tests
+        run: swift test
+
+      - name: Build Release Bundle
+        run: ./scripts/build-app.sh release
+
+      - name: Validate Code Signature
+        run: codesign -v build/Cadence.app
