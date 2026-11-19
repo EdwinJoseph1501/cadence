@@ -11,7 +11,7 @@
 [![macOS](https://img.shields.io/badge/macOS-14.0%2B-black?style=flat&logo=apple)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-6.0-orange?style=flat&logo=swift)](https://swift.org/)
 [![Metal](https://img.shields.io/badge/Metal-3D%20Raymarching-red?style=flat&logo=apple)](https://developer.apple.com/metal/)
-[![Tests](https://img.shields.io/badge/Tests-84%20Passed-brightgreen?style=flat)](Tests/)
+[![Tests](https://img.shields.io/badge/Tests-87%20Passed-brightgreen?style=flat)](Tests/)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat)](LICENSE)
 
 </div>
@@ -75,10 +75,13 @@ Cadence is styled in the proprietary **Blood Moon** design language—a deep, ve
 ### Presets & Custom Duration Entry
 - **Architectural Presets**: Quick (5m), Focus (25m), Deep Work (50m), and Long Session (90m). Presets are locked during active countdowns to prevent accidental disruption.
 - **Custom Duration Sheet**: Precise numeric entry with `+` / `-` steppers, supporting durations from **1 second up to 24 hours (86,400s)**.
+- **Live Session Adjustments**: Remove 1 minute or add 1 or 5 minutes while running or paused, without losing elapsed progress. Cadence updates the completion alert and Dock badge to match.
+- **Expected Finish Time**: The running timer shows its local finish time below the countdown; the menu bar shows the same time and a projected finish time for paused sessions.
 
 ### Native Window Lifecycle & macOS Integration
 - **Always-On-Top Floating Mode**: Toggle floating window level with the tactile pin button in the top-right chrome or <kbd>Cmd+P</kbd>. Allows keeping Cadence floating above code editors or full-screen apps.
 - **Menu Bar Extra Companion (`MenuBarExtra`)**: Displays live monospaced countdown digits in the system menu bar during active sessions, with a rich dropdown menu for quick pause/resume, resets, presets, and window toggles. Suspends evaluation when idle to ensure `0.0% CPU`.
+- **Session Controls Everywhere**: Adjust time from the main window, menu bar dropdown, or native Timer menu. Keyboard shortcuts let you subtract or add a minute without leaving your work.
 - **Live Dock Tile Progress Badge**: Displays remaining minutes badge (`24m`, `5m`) on the Dock icon while running and pause emblem (`⏸`) when paused, clearing automatically when idle.
 - **System Menu Bar Commands**: Exposes native macOS menu items under `Timer` (`CommandMenu`), making shortcuts readily discoverable.
 - **Dock Reopen Handling**: Closing the window (`Cmd+W`) keeps the countdown running in the Dock without interruption. Clicking the Dock icon or reactivating the app instantly restores key focus without creating duplicate windows.
@@ -104,6 +107,8 @@ Cadence provides full keyboard accessibility. Window shortcuts are automatically
 | :--- | :--- | :--- |
 | <kbd>Space</kbd> | **Start / Pause** countdown | Active when not editing custom duration |
 | <kbd>Escape</kbd> | **Reset** countdown to idle / Dismiss sheet | Active across all states |
+| <kbd>⌘</kbd> + <kbd>⇧</kbd> + <kbd>[</kbd> | **Remove 1 minute** | Running / Paused, when at least 1 second remains |
+| <kbd>⌘</kbd> + <kbd>⇧</kbd> + <kbd>]</kbd> | **Add 1 minute** | Running / Paused, up to the 24-hour limit |
 | <kbd>⌘</kbd> + <kbd>1</kbd> | Select **Quick** preset (5m) | Idle / Paused states |
 | <kbd>⌘</kbd> + <kbd>2</kbd> | Select **Focus** preset (25m) | Idle / Paused states |
 | <kbd>⌘</kbd> + <kbd>3</kbd> | Select **Deep Work** preset (50m) | Idle / Paused states |
@@ -155,7 +160,7 @@ cd cadence
 # 2. Build debug executable
 make build
 
-# 3. Run automated test suite (76 unit & stress tests)
+# 3. Run automated test suite (87 unit & stress tests)
 make test
 
 # 4. Run full 5-gate verification suite (lint, test, build, package, codesign)
@@ -176,7 +181,7 @@ make package
 Cadence enforces a strict 5-stage verification gate via [`scripts/verify.sh`](scripts/verify.sh):
 
 1. **`[1/5]` Formatting & Linting**: Apple `swift-format lint` ensures code conforms to `.swift-format` rules with 0 warnings.
-2. **`[2/5]` Automated Unit Tests**: Runs all 76 unit and stress tests across 10 suites in `CadenceCoreTests` and `CadenceUITests` in `< 0.015s`.
+2. **`[2/5]` Automated Unit Tests**: Runs all 87 unit and stress tests across 10 suites in `CadenceCoreTests` and `CadenceUITests`.
 3. **`[3/5]` Debug Compilation**: Validates debug compilation with `-strict-concurrency=complete`.
 4. **`[4/5]` Release Packaging**: Compiles release binary and packages `build/Cadence.app` with `AppIcon.icns` and `Info.plist`.
 5. **`[5/5]` Code Signature Validation**: Verifies Mach-O bundle integrity and ad-hoc code signature via `codesign -v`.
@@ -193,7 +198,7 @@ make package
 ./scripts/package-release.sh
 ```
 
-This generates `build/dist/Cadence-v0.2.0-macos.zip` (~1.8 MB) and a standalone drag-and-drop installer `build/dist/Cadence-0.2.0.dmg` (~1.9 MB), validating all bundle resources and Mach-O permissions using `ditto` and `hdiutil`.
+For the current alpha, this generates `build/dist/Cadence-v0.2.0-alpha.3-macos.zip` and `build/dist/Cadence-v0.2.0-alpha.3.dmg`, each with a SHA-256 checksum. Packaging validates bundle resources and archive integrity using `ditto` and `hdiutil`.
 
 ### Code Signing & Gatekeeper Note
 Local builds are signed with an **ad-hoc code signature** (`codesign -s -`). If distributing binaries outside Apple Developer ID notarization, macOS Gatekeeper may quarantine downloaded archives. To open:

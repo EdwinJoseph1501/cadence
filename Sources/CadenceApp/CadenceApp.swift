@@ -18,7 +18,7 @@ struct CadenceApp: App {
                 .preferredColorScheme(.dark)
         }
         .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 440, height: 530)
+        .defaultSize(width: 440, height: 560)
         .windowResizability(.contentSize)
         .commands {
             CommandGroup(replacing: .newItem) {}
@@ -34,6 +34,19 @@ struct CadenceApp: App {
                 }
                 .keyboardShortcut(.escape, modifiers: [])
                 .disabled(store.phase.isIdle)
+
+                Divider()
+
+                Button("Remove 1 Minute") { store.adjustDuration(by: -60) }
+                    .keyboardShortcut("[", modifiers: [.command, .shift])
+                    .disabled(!store.canAdjustDuration(by: -60))
+
+                Button("Add 1 Minute") { store.adjustDuration(by: 60) }
+                    .keyboardShortcut("]", modifiers: [.command, .shift])
+                    .disabled(!store.canAdjustDuration(by: 60))
+
+                Button("Add 5 Minutes") { store.adjustDuration(by: 300) }
+                    .disabled(!store.canAdjustDuration(by: 300))
 
                 Divider()
 

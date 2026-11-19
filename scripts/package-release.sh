@@ -50,6 +50,7 @@ fi
 
 VERSION="$(plutil -extract CFBundleShortVersionString raw "${PLIST_PATH}")"
 BUILD_NUM="$(plutil -extract CFBundleVersion raw "${PLIST_PATH}")"
+RELEASE_LABEL="${GITHUB_REF_NAME:-v${VERSION}-alpha.${BUILD_NUM}}"
 
 echo "    ✔ Binary executable: OK"
 echo "    ✔ Application Icon (AppIcon.icns): OK ($(du -sh "${ICON_PATH}" | awk '{print $1}'))"
@@ -63,7 +64,7 @@ echo "    ✔ Code signature verified (ad-hoc development signature)."
 # Step 4: Construct release ZIP archive and DMG installer
 echo "==> [4/6] Creating distributable ZIP archive..."
 mkdir -p "${DIST_DIR}"
-ZIP_NAME="Cadence-v${VERSION}-macos.zip"
+ZIP_NAME="Cadence-${RELEASE_LABEL}-macos.zip"
 ZIP_PATH="${DIST_DIR}/${ZIP_NAME}"
 
 rm -f "${ZIP_PATH}"
@@ -88,7 +89,7 @@ echo "========================================================"
 echo "          CADENCE RELEASE ARTIFACT GENERATED            "
 echo "========================================================"
 echo "Artifact:   ${ZIP_PATH}"
-echo "Version:    v${VERSION} (build ${BUILD_NUM})"
+echo "Version:    ${RELEASE_LABEL} (build ${BUILD_NUM})"
 echo "Size:       ${ARCHIVE_SIZE}"
 echo "SHA-256:    ${SHA256}"
 echo ""

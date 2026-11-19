@@ -55,7 +55,7 @@ cat << 'EOF' > "${CONTENTS_DIR}/Info.plist"
     <key>CFBundleShortVersionString</key>
     <string>0.2.0</string>
     <key>CFBundleVersion</key>
-    <string>2</string>
+    <string>3</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>LSApplicationCategoryType</key>
@@ -73,7 +73,9 @@ printf "APPL????" > "${CONTENTS_DIR}/PkgInfo"
 
 # Ad-hoc code sign for local development and Gatekeeper compatibility
 echo "==> Applying ad-hoc codesign..."
+xattr -cr "${APP_BUNDLE}"
 codesign --force --deep -s - "${APP_BUNDLE}"
+xattr -cr "${APP_BUNDLE}"
 
 echo "==> Successfully packaged: ${APP_BUNDLE}"
 echo "    Launch with: open '${APP_BUNDLE}'"

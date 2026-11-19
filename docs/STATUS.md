@@ -1,7 +1,7 @@
 # Cadence Project Status & Audit Report
 
-**Current Status**: v0.2.0-alpha.2 Complete & Verified (Polish, Optimization & P1 Desktop Integrations)  
-**Date**: November 18, 2026  
+**Current Status**: v0.2.0-alpha.3 packaged and verified; see [release notes](RELEASE_NOTES_v0.2.0-alpha.3.md) for the latest changes. The detailed audit below records the earlier v0.2.0-alpha.2 milestone.
+**Date**: November 19, 2026
 **Lead Engineer / Architect**: Antigravity  
 
 ---

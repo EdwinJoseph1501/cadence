@@ -20,10 +20,12 @@ fi
 
 PLIST_PATH="${APP_BUNDLE}/Contents/Info.plist"
 VERSION="$(plutil -extract CFBundleShortVersionString raw "${PLIST_PATH}")"
-DMG_NAME="Cadence-${VERSION}.dmg"
+BUILD_NUM="$(plutil -extract CFBundleVersion raw "${PLIST_PATH}")"
+RELEASE_LABEL="${GITHUB_REF_NAME:-v${VERSION}-alpha.${BUILD_NUM}}"
+DMG_NAME="Cadence-${RELEASE_LABEL}.dmg"
 DMG_PATH="${DIST_DIR}/${DMG_NAME}"
 
-echo "==> Packaging version: ${VERSION}"
+echo "==> Packaging version: ${RELEASE_LABEL}"
 
 # Step 2: Prepare clean staging folder
 echo "==> Preparing DMG staging environment..."

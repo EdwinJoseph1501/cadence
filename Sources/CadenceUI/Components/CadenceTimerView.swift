@@ -57,6 +57,16 @@ public struct CadenceTimerView: View {
                 }
             }
 
+            if store.phase.isRunning || store.phase.isPaused {
+                HStack(spacing: SpacingScale.md) {
+                    adjustmentButton("−1m", seconds: -60)
+                    Spacer(minLength: 0)
+                    adjustmentButton("+1m", seconds: 60)
+                    adjustmentButton("+5m", seconds: 300)
+                }
+                .padding(.horizontal, SpacingScale.lg)
+            }
+
             TimerControlsView(
                 phase: store.phase,
                 isAudioEnabled: store.isAudioAlertEnabled,
@@ -104,11 +114,35 @@ public struct CadenceTimerView: View {
                 phase: store.phase,
                 remainingDuration: remaining
             )
+
+            if store.phase.isRunning, let finish = store.estimatedFinishDate(at: date) {
+                Text("Finishes at \(finish.formatted(date: .omitted, time: .shortened))")
+                    .font(.cadenceMicro)
+                    .foregroundStyle(Color.cadenceTextSecondary)
+                    .accessibilityLabel(
+                        "Expected finish time, \(finish.formatted(date: .omitted, time: .shortened))"
+                    )
+                    .frame(maxHeight: .infinity, alignment: .bottom)
+            }
         }
         .onChange(of: remaining <= 0) { _, isExpired in
             if isExpired && store.phase.isRunning {
                 store.evaluateDeadline(at: date)
             }
         }
+    }
+
+    private func adjustmentButton(_ title: String, seconds: TimeInterval) -> some View {
+        Button(title) {
+            store.adjustDuration(by: seconds)
+        }
+        .font(.cadenceBody)
+        .foregroundStyle(Color.cadenceTextPrimary)
+        .padding(.horizontal, SpacingScale.sm)
+        .frame(minHeight: 30)
+        .background(Color.cadenceSurfaceCard, in: Capsule())
+        .overlay(Capsule().stroke(Color.cadenceBorder, lineWidth: 1))
+        .disabled(!store.canAdjustDuration(by: seconds))
+        .accessibilityLabel("\(seconds < 0 ? "Remove" : "Add") \(Int(abs(seconds) / 60)) minutes")
     }
 }
