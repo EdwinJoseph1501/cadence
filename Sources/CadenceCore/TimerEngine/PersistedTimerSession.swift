@@ -7,6 +7,8 @@ public struct PersistedTimerSession: Codable, Sendable, Equatable {
     public let activeDuration: TimeInterval
     public let isAudioAlertEnabled: Bool
     public let isAlwaysOnTop: Bool
+    public let isHapticsEnabled: Bool
+    public let selectedAudioSound: AudioAlertSound
     public let savedAt: Date
 
     public init(
@@ -15,6 +17,8 @@ public struct PersistedTimerSession: Codable, Sendable, Equatable {
         activeDuration: TimeInterval,
         isAudioAlertEnabled: Bool = true,
         isAlwaysOnTop: Bool = false,
+        isHapticsEnabled: Bool = true,
+        selectedAudioSound: AudioAlertSound = .glass,
         savedAt: Date
     ) {
         self.phase = phase
@@ -22,6 +26,8 @@ public struct PersistedTimerSession: Codable, Sendable, Equatable {
         self.activeDuration = min(max(activeDuration, 1), 86_400)
         self.isAudioAlertEnabled = isAudioAlertEnabled
         self.isAlwaysOnTop = isAlwaysOnTop
+        self.isHapticsEnabled = isHapticsEnabled
+        self.selectedAudioSound = selectedAudioSound
         self.savedAt = savedAt
     }
 
@@ -31,6 +37,8 @@ public struct PersistedTimerSession: Codable, Sendable, Equatable {
         case activeDuration
         case isAudioAlertEnabled
         case isAlwaysOnTop
+        case isHapticsEnabled
+        case selectedAudioSound
         case savedAt
     }
 
@@ -44,6 +52,11 @@ public struct PersistedTimerSession: Codable, Sendable, Equatable {
             try container.decodeIfPresent(Bool.self, forKey: .isAudioAlertEnabled) ?? true
         self.isAlwaysOnTop =
             try container.decodeIfPresent(Bool.self, forKey: .isAlwaysOnTop) ?? false
+        self.isHapticsEnabled =
+            try container.decodeIfPresent(Bool.self, forKey: .isHapticsEnabled) ?? true
+        self.selectedAudioSound =
+            try container.decodeIfPresent(AudioAlertSound.self, forKey: .selectedAudioSound)
+            ?? .glass
         self.savedAt = try container.decode(Date.self, forKey: .savedAt)
     }
 }

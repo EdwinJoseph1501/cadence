@@ -15,24 +15,40 @@ struct PersistenceModelTests {
                 phase: .idle,
                 selectedPreset: .focus,
                 activeDuration: 1500,
+                isAudioAlertEnabled: true,
+                isAlwaysOnTop: false,
+                isHapticsEnabled: true,
+                selectedAudioSound: .glass,
                 savedAt: now
             ),
             PersistedTimerSession(
                 phase: .running(targetDeadline: deadline, totalDuration: 1500),
                 selectedPreset: .focus,
                 activeDuration: 1500,
+                isAudioAlertEnabled: false,
+                isAlwaysOnTop: true,
+                isHapticsEnabled: false,
+                selectedAudioSound: .basso,
                 savedAt: now
             ),
             PersistedTimerSession(
                 phase: .paused(remainingDuration: 750, totalDuration: 1500),
                 selectedPreset: .custom,
                 activeDuration: 1500,
+                isAudioAlertEnabled: true,
+                isAlwaysOnTop: false,
+                isHapticsEnabled: true,
+                selectedAudioSound: .pop,
                 savedAt: now
             ),
             PersistedTimerSession(
                 phase: .completed(completedAt: deadline, totalDuration: 1500),
                 selectedPreset: .quick,
                 activeDuration: 300,
+                isAudioAlertEnabled: true,
+                isAlwaysOnTop: false,
+                isHapticsEnabled: true,
+                selectedAudioSound: .ping,
                 savedAt: now
             ),
         ]
@@ -99,7 +115,7 @@ struct PersistenceModelTests {
 
     @Test("PersistedTimerSession backward compatibility for missing audio preference")
     func testAudioPreferenceBackwardCompatibility() throws {
-        // Legacy JSON without isAudioAlertEnabled
+        // Legacy JSON without isAudioAlertEnabled, isHapticsEnabled, or selectedAudioSound
         let legacyJSON = """
             {
                 "phase": { "idle": {} },
@@ -114,6 +130,8 @@ struct PersistenceModelTests {
         let decoded = try decoder.decode(PersistedTimerSession.self, from: legacyJSON)
         #expect(decoded.isAudioAlertEnabled == true)
         #expect(decoded.isAlwaysOnTop == false)
+        #expect(decoded.isHapticsEnabled == true)
+        #expect(decoded.selectedAudioSound == .glass)
         #expect(decoded.activeDuration == 1500)
         #expect(decoded.selectedPreset == .focus)
 
@@ -125,17 +143,21 @@ struct PersistenceModelTests {
             activeDuration: 3000,
             isAudioAlertEnabled: false,
             isAlwaysOnTop: true,
+            isHapticsEnabled: false,
+            selectedAudioSound: .basso,
             savedAt: now
         )
         let encoded = try JSONEncoder().encode(customSession)
         let roundTripped = try JSONDecoder().decode(PersistedTimerSession.self, from: encoded)
         #expect(roundTripped.isAudioAlertEnabled == false)
         #expect(roundTripped.isAlwaysOnTop == true)
+        #expect(roundTripped.isHapticsEnabled == false)
+        #expect(roundTripped.selectedAudioSound == .basso)
     }
 
     @Test("PersistedTimerSession backward compatibility for missing always-on-top preference")
     func testAlwaysOnTopBackwardCompatibility() throws {
-        // v0.1.0-alpha.1 JSON with isAudioAlertEnabled but without isAlwaysOnTop
+        // v0.1.0-alpha.1 JSON with isAudioAlertEnabled but without isAlwaysOnTop or new v0.3.0 fields
         let alpha1JSON = """
             {
                 "phase": { "idle": {} },
@@ -151,5 +173,7 @@ struct PersistenceModelTests {
         let decoded = try decoder.decode(PersistedTimerSession.self, from: alpha1JSON)
         #expect(decoded.isAlwaysOnTop == false)
         #expect(decoded.isAudioAlertEnabled == true)
+        #expect(decoded.isHapticsEnabled == true)
+        #expect(decoded.selectedAudioSound == .glass)
     }
 }

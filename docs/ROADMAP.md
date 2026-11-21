@@ -32,6 +32,12 @@ This document defines the authoritative seven-phase engineering roadmap for Cade
 * [x] Native system menu bar commands (`CommandMenu("Timer")`).
 * [x] Automated DMG installer packaging (`scripts/build-dmg.sh`) and GitHub Actions CI/CD workflows.
 
+### P1.5: Tactile, Audio & Automation Enhancements (Completed in v0.3.0)
+* [x] Native Trackpad Haptic Feedback (`NSHapticFeedbackManager`, `HapticFeedbackProtocol`, `AppKitHapticFeedback`, multi-tap completion heartbeat).
+* [x] Curated Audio Completion Chimes (7 bespoke system sounds: Glass, Ping, Tink, Purr, Pop, Basso, Sosumi) with instant inline preview.
+* [x] Native macOS Settings Window (`Settings` scene, `SettingsView`, `Cmd+,` shortcut, audio picker, tactile haptics toggle, always-on-top toggle, default preset picker).
+* [x] macOS App Intents & Siri Shortcuts (`AppIntents` framework, `StartTimerIntent`, `PauseTimerIntent`, `ToggleTimerIntent`, `ResetTimerIntent`, `SetPresetIntent`, `GetTimerStatusIntent`, `CadenceShortcutsProvider`).
+
 ### P2: Explicitly Out of Scope for v1.0
 * Stopwatch mode.
 * Multiple simultaneous timers.

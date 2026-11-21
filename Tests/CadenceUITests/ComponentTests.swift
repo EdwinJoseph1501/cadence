@@ -231,4 +231,14 @@ struct ComponentTests {
         menu.onQuit()
         #expect(quit)
     }
+
+    @Test("SettingsView initializes and exposes store bindings")
+    func testSettingsViewInitialization() {
+        let store = TimerStore()
+        let settings = SettingsView(store: store)
+        #expect(settings.store.selectedPreset == .focus)
+        #expect(settings.store.selectedAudioSound == .glass)
+        #expect(settings.store.isHapticsEnabled == true)
+        #expect(settings.store.isAudioAlertEnabled == true)
+    }
 }

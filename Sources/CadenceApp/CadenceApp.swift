@@ -5,12 +5,17 @@ import SwiftUI
 @main
 struct CadenceApp: App {
     @NSApplicationDelegateAdaptor(CadenceAppDelegate.self) private var appDelegate
-    @CadenceState private var store = TimerStore(
+
+    @MainActor
+    public static let sharedStore = TimerStore(
         persistence: UserDefaultsTimerPersistence(),
         notificationScheduler: UNNotificationScheduler(),
         audioAlertPlayer: AppKitAudioPlayer(),
+        hapticFeedback: AppKitHapticFeedback(),
         dockTileManager: AppKitDockTileManager()
     )
+
+    @CadenceState private var store = CadenceApp.sharedStore
 
     var body: some Scene {
         Window("Cadence", id: "main") {
@@ -77,7 +82,16 @@ struct CadenceApp: App {
                     store.toggleAudioAlert()
                 }
                 .keyboardShortcut("m", modifiers: [.command, .shift])
+
+                Button(store.isHapticsEnabled ? "✓ Trackpad Haptics" : "Trackpad Haptics") {
+                    store.toggleHaptics()
+                }
             }
+        }
+
+        Settings {
+            SettingsView(store: store)
+                .preferredColorScheme(.dark)
         }
 
         MenuBarExtra {

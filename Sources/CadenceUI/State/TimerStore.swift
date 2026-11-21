@@ -11,6 +11,8 @@ public final class TimerStore {
     public private(set) var activeDuration: TimeInterval = TimerPreset.focus.defaultDuration
     public private(set) var isAudioAlertEnabled: Bool = true
     public private(set) var isAlwaysOnTop: Bool = false
+    public private(set) var isHapticsEnabled: Bool = true
+    public private(set) var selectedAudioSound: AudioAlertSound = .glass
     public var isCustomSheetPresented: Bool = false
 
     private let timeSource: any TimeSourceProtocol
@@ -18,6 +20,7 @@ public final class TimerStore {
     private let notificationScheduler: any NotificationSchedulerProtocol
     private let activityManager: any ActivityAssertionProtocol
     private let audioAlertPlayer: any AudioAlertProtocol
+    private let hapticFeedback: any HapticFeedbackProtocol
     private let dockTileManager: any DockTileManagerProtocol
 
     private var activityToken: (any Sendable)?
@@ -31,6 +34,7 @@ public final class TimerStore {
         notificationScheduler: any NotificationSchedulerProtocol = NoOpNotificationScheduler(),
         activityManager: any ActivityAssertionProtocol = ProcessInfoActivityManager(),
         audioAlertPlayer: any AudioAlertProtocol = NoOpAudioAlertPlayer(),
+        hapticFeedback: any HapticFeedbackProtocol = NoOpHapticFeedback(),
         dockTileManager: any DockTileManagerProtocol = NoOpDockTileManager(),
         defaultPreset: TimerPreset = .focus
     ) {
@@ -39,6 +43,7 @@ public final class TimerStore {
         self.notificationScheduler = notificationScheduler
         self.activityManager = activityManager
         self.audioAlertPlayer = audioAlertPlayer
+        self.hapticFeedback = hapticFeedback
         self.dockTileManager = dockTileManager
 
         if let restored = persistence.loadSession() {
@@ -46,6 +51,8 @@ public final class TimerStore {
             self.activeDuration = min(max(restored.activeDuration, 1), 86_400)
             self.isAudioAlertEnabled = restored.isAudioAlertEnabled
             self.isAlwaysOnTop = restored.isAlwaysOnTop
+            self.isHapticsEnabled = restored.isHapticsEnabled
+            self.selectedAudioSound = restored.selectedAudioSound
 
             switch restored.phase {
                 case .idle:
@@ -91,6 +98,11 @@ public final class TimerStore {
         activityManager.endActivity(activityToken)
     }
 
+    private func triggerHaptic(_ pattern: HapticFeedbackPattern) {
+        guard isHapticsEnabled else { return }
+        hapticFeedback.perform(pattern)
+    }
+
     /// Starts a countdown from the currently active duration.
     public func start() {
         phase = TimerEngineCalculations.start(duration: activeDuration, from: timeSource.now)
@@ -101,6 +113,7 @@ public final class TimerStore {
                 )
             }
             scheduleCompletionNotification(deadline: deadline)
+            triggerHaptic(.levelChange)
         }
         saveSession()
         updateDockBadge()
@@ -114,6 +127,7 @@ public final class TimerStore {
             activityToken = nil
         }
         cancelCompletionNotification()
+        triggerHaptic(.generic)
         saveSession()
         updateDockBadge()
     }
@@ -128,6 +142,7 @@ public final class TimerStore {
                 )
             }
             scheduleCompletionNotification(deadline: deadline)
+            triggerHaptic(.levelChange)
         }
         saveSession()
         updateDockBadge()
@@ -141,6 +156,7 @@ public final class TimerStore {
             activityToken = nil
         }
         cancelCompletionNotification()
+        triggerHaptic(.alignment)
         saveSession()
         updateDockBadge()
     }
@@ -167,6 +183,7 @@ public final class TimerStore {
             activeDuration = preset.defaultDuration
         }
         phase = .idle
+        triggerHaptic(.generic)
         saveSession()
         updateDockBadge()
     }
@@ -200,8 +217,9 @@ public final class TimerStore {
             }
             cancelCompletionNotification()
             if isAudioAlertEnabled {
-                audioAlertPlayer.playCompletionAlert()
+                audioAlertPlayer.playCompletionAlert(sound: selectedAudioSound)
             }
+            triggerHaptic(.completion)
             saveSession()
             updateDockBadge(at: now)
         }
@@ -223,6 +241,30 @@ public final class TimerStore {
         if case .running(let deadline, _) = phase {
             scheduleCompletionNotification(deadline: deadline)
         }
+        saveSession()
+    }
+
+    /// Selects the audio alert chime sound and persists the setting.
+    public func selectAudioSound(_ sound: AudioAlertSound) {
+        selectedAudioSound = sound
+        saveSession()
+    }
+
+    /// Previews an audio alert sound immediately.
+    public func previewSound(_ sound: AudioAlertSound) {
+        audioAlertPlayer.playCompletionAlert(sound: sound)
+    }
+
+    /// Toggles the trackpad haptic feedback preference and persists the setting.
+    public func toggleHaptics() {
+        isHapticsEnabled.toggle()
+        saveSession()
+    }
+
+    /// Sets the trackpad haptic feedback preference and persists the setting.
+    public func setHapticsEnabled(_ enabled: Bool) {
+        guard isHapticsEnabled != enabled else { return }
+        isHapticsEnabled = enabled
         saveSession()
     }
 
@@ -315,6 +357,8 @@ public final class TimerStore {
             activeDuration: activeDuration,
             isAudioAlertEnabled: isAudioAlertEnabled,
             isAlwaysOnTop: isAlwaysOnTop,
+            isHapticsEnabled: isHapticsEnabled,
+            selectedAudioSound: selectedAudioSound,
             savedAt: timeSource.now
         )
         persistence.save(session: session)

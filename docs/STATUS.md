@@ -1,14 +1,36 @@
 # Cadence Project Status & Audit Report
 
-**Current Status**: v0.2.0-alpha.2 Complete & Verified (Polish, Optimization & P1 Desktop Integrations)  
-**Date**: November 18, 2026  
+**Current Status**: v0.3.0 Complete & Verified (Tactile Trackpad Haptics, Curated Audio Chimes, Native Settings Scene & App Intents Automation)  
+**Date**: November 21, 2026  
 **Lead Engineer / Architect**: Antigravity  
 
 ---
 
 ## 1. Executive Summary
 
-Phase 5 (**Native macOS Integration and Window Lifecycle**) is complete, verified by the automated verification suite, and audited directly on macOS runtime.
+Cadence v0.3.0 introduces deep native tactile sensory feedback, expanded auditory aesthetics, native preferences configuration, and zero-overhead system automations via Apple's modern `AppIntents` framework:
+
+- **Tactile Trackpad Haptics (`NSHapticFeedbackManager`)**:
+  - `HapticFeedbackProtocol`, `NoOpHapticFeedback`, and `MockHapticFeedback` added to `CadenceCore`.
+  - `AppKitHapticFeedback` connects to macOS `NSHapticFeedbackManager.defaultPerformer`.
+  - Distinct sensory cues on Start/Resume (`.levelChange`), Pause/Presets (`.generic`), Reset (`.alignment`), and a rhythmic double-pulse heartbeat upon countdown completion (`.completion`).
+  - Fully toggleable and persistent via `store.isHapticsEnabled`.
+- **Curated Completion Audio Chimes (`AudioAlertSound`)**:
+  - Expanded beyond system Glass chime to 7 bespoke ambient sounds: *Glass (Crisp Chime)*, *Ping (Clean Note)*, *Tink (Subtle Tap)*, *Purr (Warm Resonance)*, *Pop (Woodblock)*, *Basso (Deep Gong)*, and *Sosumi (Legacy Tone)*.
+  - Interactive preview playback with one-click testing before selection.
+  - Fully backward-compatible schema persistence (`selectedAudioSound`).
+- **Native macOS Settings Window (`SettingsView` / `Cmd+,`)**:
+  - Modern native SwiftUI `Settings` scene adhering to the Blood Moon design system.
+  - Granular controls for Audio Alert chime selection with inline preview, Trackpad Haptic feedback toggle, Always-on-top window pin preference, and default starting preset selection.
+  - Instant access via application menu (`Cadence -> Settings...`), `Cmd+,`, and Menu Bar Extra dropdown.
+- **Siri Shortcuts & App Intents (`AppIntents` framework)**:
+  - `StartTimerIntent`, `PauseTimerIntent`, `ToggleTimerIntent`, `ResetTimerIntent`, `SetPresetIntent`, and `GetTimerStatusIntent`.
+  - `CadenceShortcutsProvider` automatically registers phrases with macOS Shortcuts, Siri, Raycast, and Alfred ("Start focus in Cadence", "Pause Cadence timer", "Check Cadence timer status").
+  - Swift 6 concurrency safe with static `Sendable` declarations.
+- **Test Suite Expansion**:
+  - Expanded from 84 to **93 automated unit tests** across 11 test suites.
+  - 100% pass rate in under 0.015 seconds.
+  - Full 5-step verification suite (`./scripts/verify.sh`) passed cleanly.
 
 Key accomplishments in Phase 5:
 - **Native Window Lifecycle & Dock Reopen**:

@@ -3,15 +3,11 @@ import CadenceCore
 
 /// Native macOS audio alert player using system sound services via AppKit NSSound.
 public final class AppKitAudioPlayer: AudioAlertProtocol, @unchecked Sendable {
-    private let soundName: String
+    public init() {}
 
-    public init(soundName: String = "Glass") {
-        self.soundName = soundName
-    }
-
-    public func playCompletionAlert() {
-        if let sound = NSSound(named: NSSound.Name(soundName)) {
-            sound.play()
+    public func playCompletionAlert(sound: AudioAlertSound = .glass) {
+        if let nsSound = NSSound(named: NSSound.Name(sound.rawValue)) {
+            nsSound.play()
         } else {
             NSSound.beep()
         }

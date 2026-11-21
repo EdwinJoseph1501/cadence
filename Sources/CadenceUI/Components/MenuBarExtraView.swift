@@ -134,7 +134,15 @@ public struct CadenceMenuBarMenu: View {
             store.toggleAudioAlert()
         }
 
+        Button(store.isHapticsEnabled ? "✓ Trackpad Haptics" : "Trackpad Haptics") {
+            store.toggleHaptics()
+        }
+
         Divider()
+
+        Button("Settings...") {
+            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        }
 
         Button("Open Cadence Window") {
             onOpenWindow()

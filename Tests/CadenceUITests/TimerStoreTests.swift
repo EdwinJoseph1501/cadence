@@ -907,4 +907,134 @@ struct TimerStoreTests {
         store.reset()
         #expect(dockManager.lastBadge == nil)
     }
+
+    @Test("Haptic feedback triggers on timer operations and completion")
+    func testHapticFeedbackTriggers() {
+        let clock = SimulatedTimeSource(initialTime: Date(timeIntervalSince1970: 10_000))
+        let mockHaptic = MockHapticFeedback()
+        let store = TimerStore(
+            timeSource: clock,
+            hapticFeedback: mockHaptic,
+            defaultPreset: .focus
+        )
+
+        #expect(mockHaptic.performedPatterns.isEmpty)
+
+        // Start
+        store.start()
+        #expect(mockHaptic.performedPatterns == [.levelChange])
+
+        // Pause
+        store.pause()
+        #expect(mockHaptic.performedPatterns == [.levelChange, .generic])
+
+        // Resume
+        store.resume()
+        #expect(mockHaptic.performedPatterns == [.levelChange, .generic, .levelChange])
+
+        // Select Preset
+        store.pause()
+        store.selectPreset(.quick)
+        #expect(mockHaptic.performedPatterns.last == .generic)
+
+        // Reset
+        store.reset()
+        #expect(mockHaptic.performedPatterns.last == .alignment)
+
+        // Start and advance to completion
+        mockHaptic.clear()
+        store.start()
+        clock.advance(by: 300)
+        store.evaluateDeadline()
+        #expect(store.phase.isCompleted)
+        #expect(mockHaptic.performedPatterns == [.levelChange, .completion])
+    }
+
+    @Test("Haptic feedback disabled suppresses all tactile events")
+    func testHapticFeedbackDisabled() {
+        let clock = SimulatedTimeSource(initialTime: Date(timeIntervalSince1970: 10_000))
+        let mockHaptic = MockHapticFeedback()
+        let store = TimerStore(
+            timeSource: clock,
+            hapticFeedback: mockHaptic,
+            defaultPreset: .focus
+        )
+
+        store.setHapticsEnabled(false)
+        #expect(!store.isHapticsEnabled)
+
+        store.start()
+        store.pause()
+        store.resume()
+        store.reset()
+        store.selectPreset(.quick)
+
+        clock.advance(by: 300)
+        store.start()
+        clock.advance(by: 300)
+        store.evaluateDeadline()
+
+        #expect(mockHaptic.performedPatterns.isEmpty)
+    }
+
+    @Test("Haptic feedback preference toggle and persistence restoration")
+    func testHapticFeedbackPersistence() {
+        let persistence = InMemoryTimerPersistence()
+        let clock = SimulatedTimeSource(initialTime: Date(timeIntervalSince1970: 10_000))
+        let store = TimerStore(timeSource: clock, persistence: persistence)
+
+        #expect(store.isHapticsEnabled)
+
+        store.toggleHaptics()
+        #expect(!store.isHapticsEnabled)
+        #expect(persistence.loadSession()?.isHapticsEnabled == false)
+
+        store.setHapticsEnabled(true)
+        #expect(store.isHapticsEnabled)
+        #expect(persistence.loadSession()?.isHapticsEnabled == true)
+
+        let restored = TimerStore(timeSource: clock, persistence: persistence)
+        #expect(restored.isHapticsEnabled)
+    }
+
+    @Test("Audio alert sound selection, preview, and completion playback")
+    func testAudioAlertSoundSelectionAndPlayback() {
+        let clock = SimulatedTimeSource(initialTime: Date(timeIntervalSince1970: 10_000))
+        let mockAudio = MockAudioAlertPlayer()
+        let persistence = InMemoryTimerPersistence()
+        let store = TimerStore(
+            timeSource: clock,
+            persistence: persistence,
+            audioAlertPlayer: mockAudio,
+            defaultPreset: .quick
+        )
+
+        #expect(store.selectedAudioSound == .glass)
+
+        // Select different sound
+        store.selectAudioSound(.basso)
+        #expect(store.selectedAudioSound == .basso)
+        #expect(persistence.loadSession()?.selectedAudioSound == .basso)
+
+        // Preview sound
+        store.previewSound(.pop)
+        #expect(mockAudio.playedSounds == [.pop])
+
+        // Complete timer and verify selected sound plays
+        mockAudio.clear()
+        store.start()
+        clock.advance(by: 300)
+        store.evaluateDeadline()
+
+        #expect(store.phase.isCompleted)
+        #expect(mockAudio.playedSounds == [.basso])
+
+        // Verify restoration in new store
+        let restored = TimerStore(
+            timeSource: clock,
+            persistence: persistence,
+            audioAlertPlayer: mockAudio
+        )
+        #expect(restored.selectedAudioSound == .basso)
+    }
 }
