@@ -844,6 +844,82 @@ struct TimerStoreTests {
         #expect(store.activeDuration == 86_400.0)
     }
 
+    @Test("Live adjustments preserve elapsed progress and reschedule completion")
+    func testLiveAdjustments() async {
+        let clock = SimulatedTimeSource(initialTime: Date(timeIntervalSince1970: 10_000))
+        let scheduler = MockNotificationScheduler()
+        let persistence = InMemoryTimerPersistence()
+        let store = TimerStore(
+            timeSource: clock,
+            persistence: persistence,
+            notificationScheduler: scheduler,
+            defaultPreset: .quick
+        )
+        store.start()
+        await store.waitForNotificationTasks()
+        clock.advance(by: 120)
+
+        #expect(store.adjustDuration(by: 60))
+        #expect(store.remainingDuration() == 240)
+        #expect(abs(store.progressFraction() - (120.0 / 360.0)) < 0.001)
+        #expect(store.estimatedFinishDate() == Date(timeIntervalSince1970: 10_360))
+        await store.waitForNotificationTasks()
+        let scheduled = await scheduler.scheduledNotifications
+        #expect(scheduled.last?.triggerIn == 240)
+
+        let restored = TimerStore(timeSource: clock, persistence: persistence)
+        #expect(restored.remainingDuration() == 240)
+        #expect(restored.phase.isRunning)
+    }
+
+    @Test("Paused adjustments survive resume without scheduling early alerts")
+    func testPausedAdjustments() async {
+        let clock = SimulatedTimeSource(initialTime: Date(timeIntervalSince1970: 10_000))
+        let scheduler = MockNotificationScheduler()
+        let store = TimerStore(
+            timeSource: clock,
+            notificationScheduler: scheduler,
+            defaultPreset: .quick
+        )
+        store.start()
+        await store.waitForNotificationTasks()
+        clock.advance(by: 100)
+        store.pause()
+        await store.waitForNotificationTasks()
+
+        #expect(store.adjustDuration(by: -60))
+        #expect(store.remainingDuration() == 140)
+        #expect(store.estimatedFinishDate() == Date(timeIntervalSince1970: 10_240))
+        let beforeResume = await scheduler.scheduledNotifications.count
+        #expect(beforeResume == 1)
+
+        clock.advance(by: 500)
+        store.resume()
+        await store.waitForNotificationTasks()
+        #expect(store.remainingDuration() == 140)
+        #expect(store.estimatedFinishDate() == Date(timeIntervalSince1970: 10_740))
+        let scheduled = await scheduler.scheduledNotifications
+        #expect(scheduled.last?.triggerIn == 140)
+    }
+
+    @Test("Adjustments reject inactive, expired, and out-of-range sessions")
+    func testAdjustmentBounds() {
+        let clock = SimulatedTimeSource(initialTime: Date(timeIntervalSince1970: 10_000))
+        let store = TimerStore(timeSource: clock, defaultPreset: .quick)
+        #expect(!store.adjustDuration(by: 60))
+        store.start()
+        #expect(!store.adjustDuration(by: -300))
+        #expect(!store.adjustDuration(by: .infinity))
+        #expect(store.setCustomDuration(86_400))
+        store.start()
+        #expect(!store.canAdjustDuration(by: 60))
+        #expect(!store.adjustDuration(by: 60))
+        clock.advance(by: 86_401)
+        #expect(!store.adjustDuration(by: 60))
+        store.evaluateDeadline()
+        #expect(!store.adjustDuration(by: 60))
+    }
+
     @Test("Always-on-top toggle and persistence restoration")
     func testAlwaysOnTopToggleAndPersistence() {
         let persistence = InMemoryTimerPersistence()

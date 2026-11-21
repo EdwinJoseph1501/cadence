@@ -73,7 +73,9 @@ printf "APPL????" > "${CONTENTS_DIR}/PkgInfo"
 
 # Ad-hoc code sign for local development and Gatekeeper compatibility
 echo "==> Applying ad-hoc codesign..."
+xattr -cr "${APP_BUNDLE}"
 codesign --force --deep -s - "${APP_BUNDLE}"
+xattr -cr "${APP_BUNDLE}"
 
 echo "==> Successfully packaged: ${APP_BUNDLE}"
 echo "    Launch with: open '${APP_BUNDLE}'"

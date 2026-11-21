@@ -1,6 +1,6 @@
 # Cadence Project Status & Audit Report
 
-**Current Status**: v0.3.0 Complete & Verified (Tactile Trackpad Haptics, Curated Audio Chimes, Native Settings Scene & App Intents Automation)  
+**Current Status**: v0.3.0 Complete & Verified (Tactile Trackpad Haptics, Curated Audio Chimes, Native Settings Scene & App Intents Automation; includes v0.2.0-alpha.3 session controls)  
 **Date**: November 21, 2026  
 **Lead Engineer / Architect**: Antigravity  
 

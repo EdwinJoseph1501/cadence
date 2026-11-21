@@ -38,6 +38,18 @@ public struct MainWindowView: View {
                 }
                 .keyboardShortcut(.escape, modifiers: [])
 
+                Button("Remove 1 Minute") {
+                    guard !store.isCustomSheetPresented else { return }
+                    store.adjustDuration(by: -60)
+                }
+                .keyboardShortcut("[", modifiers: [.command, .shift])
+
+                Button("Add 1 Minute") {
+                    guard !store.isCustomSheetPresented else { return }
+                    store.adjustDuration(by: 60)
+                }
+                .keyboardShortcut("]", modifiers: [.command, .shift])
+
                 Button("Toggle Audio Alert") {
                     guard !store.isCustomSheetPresented else { return }
                     store.toggleAudioAlert()
@@ -83,9 +95,9 @@ public struct MainWindowView: View {
             minWidth: 400,
             idealWidth: 440,
             maxWidth: 500,
-            minHeight: 490,
-            idealHeight: 530,
-            maxHeight: 590
+            minHeight: 520,
+            idealHeight: 560,
+            maxHeight: 620
         )
         .background(Color.cadenceBackground)
         .background(WindowConfigurator())

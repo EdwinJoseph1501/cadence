@@ -175,6 +175,74 @@ public final class TimerStore {
         }
     }
 
+    /// Changes the current session without resetting elapsed progress. Returns false when the
+    /// session is inactive, expired, or the resulting duration would leave the 1s...24h range.
+    @discardableResult
+    public func adjustDuration(by seconds: TimeInterval) -> Bool {
+        guard seconds.isFinite, seconds != 0 else { return false }
+        let now = timeSource.now
+        let remaining: TimeInterval
+        let total: TimeInterval
+        switch phase {
+            case .running(let deadline, let duration):
+                remaining = deadline.timeIntervalSince(now)
+                total = duration
+            case .paused(let duration, let original):
+                remaining = duration
+                total = original
+            case .idle, .completed:
+                return false
+        }
+
+        let adjustedRemaining = remaining + seconds
+        let adjustedTotal = total + seconds
+        guard remaining > 0, adjustedRemaining >= 1, adjustedTotal >= 1,
+            adjustedTotal <= 86_400
+        else { return false }
+
+        if phase.isRunning {
+            let deadline = now.addingTimeInterval(adjustedRemaining)
+            phase = .running(targetDeadline: deadline, totalDuration: adjustedTotal)
+            scheduleCompletionNotification(deadline: deadline)
+        } else {
+            phase = .paused(
+                remainingDuration: adjustedRemaining,
+                totalDuration: adjustedTotal
+            )
+        }
+        saveSession()
+        updateDockBadge(at: now)
+        return true
+    }
+
+    /// Indicates whether an adjustment can be applied at the current clock instant.
+    public func canAdjustDuration(by seconds: TimeInterval) -> Bool {
+        guard seconds.isFinite, seconds != 0 else { return false }
+        let remaining = remainingDuration()
+        let total: TimeInterval
+        switch phase {
+            case .running(_, let duration), .paused(_, let duration):
+                total = duration
+            case .idle, .completed:
+                return false
+        }
+        return remaining > 0 && remaining + seconds >= 1
+            && total + seconds >= 1 && total + seconds <= 86_400
+    }
+
+    /// The expected end time, assuming a paused session resumes now.
+    public func estimatedFinishDate(at date: Date? = nil) -> Date? {
+        let now = date ?? timeSource.now
+        switch phase {
+            case .running(let deadline, _):
+                return deadline
+            case .paused(let remaining, _):
+                return now.addingTimeInterval(remaining)
+            case .idle, .completed:
+                return nil
+        }
+    }
+
     /// Selects a duration preset and resets the timer to idle, unless a timer is actively running.
     public func selectPreset(_ preset: TimerPreset) {
         guard !phase.isRunning else { return }
@@ -372,8 +440,10 @@ public final class TimerStore {
         hasRequestedNotificationPermission = true
         let sound = isAudioAlertEnabled
 
-        notificationTask?.cancel()
+        let previousTask = notificationTask
+        previousTask?.cancel()
         notificationTask = Task {
+            await previousTask?.value
             if requestPermission {
                 _ = await scheduler.requestAuthorization()
             }
@@ -389,9 +459,11 @@ public final class TimerStore {
     }
 
     private func cancelCompletionNotification() {
-        notificationTask?.cancel()
+        let previousTask = notificationTask
+        previousTask?.cancel()
         let scheduler = notificationScheduler
         notificationTask = Task {
+            await previousTask?.value
             await scheduler.cancelPendingNotifications(identifiers: [
                 Self.completionNotificationIdentifier
             ])

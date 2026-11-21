@@ -104,6 +104,21 @@ public struct CadenceMenuBarMenu: View {
         }
         .disabled(store.phase.isIdle)
 
+        if let finish = store.estimatedFinishDate() {
+            Text(
+                store.phase.isPaused
+                    ? "If resumed now, finishes at \(finish.formatted(date: .omitted, time: .shortened))"
+                    : "Finishes at \(finish.formatted(date: .omitted, time: .shortened))"
+            )
+            Divider()
+            Button("Remove 1 Minute") { store.adjustDuration(by: -60) }
+                .disabled(!store.canAdjustDuration(by: -60))
+            Button("Add 1 Minute") { store.adjustDuration(by: 60) }
+                .disabled(!store.canAdjustDuration(by: 60))
+            Button("Add 5 Minutes") { store.adjustDuration(by: 300) }
+                .disabled(!store.canAdjustDuration(by: 300))
+        }
+
         Divider()
 
         Menu("Presets") {
